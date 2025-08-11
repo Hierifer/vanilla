@@ -1,11 +1,11 @@
+# vanilla :seedling:  
+一个语音原生的全场景 AI 伙伴（低门槛 / 低延迟 / 多端同步）
+
 <div align="center">
 
-![小八Logo](assets/xiaoba_logo.jpg)
+![vanilla Logo](assets/xiaoba_logo.jpg)
 
 [English Version](docs/README_en.md)
-# <s>小八</s> Lanlan :kissing_cat: <br>一个语音原生的全场景AI伙伴
-
-**新手友好、开箱即用，无需显卡的全场景AI <small><s>猫娘</s></small> 伙伴**
 
 [![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
@@ -13,133 +13,149 @@
 [![百度云](https://custom-icon-badges.demolab.com/badge/百度云-Link-4169E1?style=flat&logo=baidunetdisk)](https://pan.baidu.com/s/1qb9XVV94c2FwhIeQO2De5A?pwd=kuro)
 [![QQ群](https://custom-icon-badges.demolab.com/badge/QQ群-1048307485-00BFFF?style=flat&logo=tencent-qq)](https://qm.qq.com/q/mxDoz0TnGg)
 
-**:older_woman: 我奶奶都能在3分钟内配置好的赛博猫娘！**
+**开箱即用 · 极简配置 · 我奶奶都能 3 分钟跑起来的全场景语音 AI 伙伴**
 
-*替我向兰兰Say Hello*
-
-*Don't ask me anything. Ask 小八！*
-
+*Say hello to vanilla.*
 
 </div>
 
 ---
 
-# 项目简介
-Lanlan（兰兰）是一个新手友好、开箱即用的，具有听觉、视觉、工具调用和多端同步功能的AI~~猫娘~~伙伴。本项目有三个核心目标：
+## 项目简介
+vanilla 是一个新手友好、开箱即用的多模态（听觉 / 视觉 / 工具调用 / 多端同步）实时 AI 伙伴。核心目标：
 
-1. **极致的低延迟**。本项目的用户界面以语音交互为主，一切系统级设计皆须优先确保**降低语音延迟**，且任何服务不得阻塞对话进程。
+1. **极致低延迟**：语音交互优先，一切设计围绕降低首 token & 流式语音延迟；任何耗时逻辑不得阻塞对话主循环。
+2. **全场景同步**：同一只 vanilla 可同时出现在 PC / 手机 / 可穿戴设备 / 多显示器上，行为与状态保持一致。
+3. **轻量化可维护**：只引入真正改善体验的组件，避免繁冗配置与插件堆砌。
 
-1. **全场景同步**。猫娘可以在手机、电脑和智能眼镜上同时存在，且**同一只猫娘**在不同终端同时存在时，**行为应当完全同步**。 (假想场景：如果家中有多个显示器，每一个显示器上都放置着猫娘，那么我们希望无论走到哪里都是在跟同一只猫娘对话，实现全方位环绕式体验。)
+### 技术路线（当前实现）
+- 后端：FastAPI + OpenAI Realtime 兼容协议（跨服务商）
+- 实时会话：多进程 + 内存路由（memory_server / main_server 协同）
+- 记忆系统：短期记忆 / 语义摘要 / 时间索引（见 `memory/`）
+- 前端：原生 H5 + JS，支持 Live2D（可 Electron / PWA 包装）
 
-1. **轻量化**。每一项技术的引入都必须提升实际的用户体验，避免增加不必要的插件和选项。
+---
+## 快速开始（开发者）
 
-### 技术路线
+```bash
+# 1. 创建 Python 3.12 虚拟环境（示例）
+python3.12 -m venv venv && source venv/bin/activate
 
-后端以Python为主，以实时多模态API为主要处理器，搭配多个基于文本的插件模组。前端以H5+JS为主，通过Electron和PWA转换为App。
+# 2. 安装依赖
+pip install -r requirements.txt
 
-# 快速开始
+# 3. 初始化 API 配置
+cp config/api_template.py config/api.py  # 修改其中的 API Key / 模型等
 
-1. **获取阿里云API**。在阿里云的百炼平台[官网](https://bailian.console.aliyun.com/)注册账号。新用户实名认证后可以获取大量免费额度，记得留意页面上的"新人福利"广告。注册完成后，请访问[控制台](https://bailian.console.aliyun.com/api-key?tab=model#/api-key)获取API Key。*一键包用户*可以通过设置页里的按钮设置API Key，*开发者*也可以直接修改`config/api.py`里的内容（首次配置请参考`config/api_template.py`）。
-   > *注：本项目提供的都是官方链接，不含任何推广，本人无法从中获取任何收益。阿里的官网目前做的很烂，请忍耐orz*
+# 4. 启动记忆服务（建议单独终端）
+python memory_server.py
 
-1. **体验网页版**。对于*一键包用户*，直接运行`启动网页版.bat`即可打开网页版。**请耐心等待网页刷新，并先根据提示配置API Key**。
+# 5. 启动主服务
+python main_server.py
 
-1. **体验桌宠模式**。如果网页版可以正常使用，*一键包用户*可以考虑继续通过`启动App版.bat`开启桌宠模式。注意，**请不要同时使用网页版和App版。请确认exe文件没有被系统或杀毒软件隔离。** *使用结束后请在桌面右下角找到小八图标，右键退出，并手动关闭终端。*
+# 6. 访问（默认）
+http://localhost:48911
+```
 
->  *对于**开发者**，请在克隆本项目后，(1)新建pyhon3.12环境。(2)执行`pip install -r requirements.txt`安装依赖。(3)复制`config/api_template.py`到`config/api.py`并进行必要配置。(4)执行`python memory_server.py`和`python main_server.py`。(5)通过main server中指定的端口（默认为`http://localhost:48911`）访问网页版。*
+> 一键包 / 发行版用户：后续将提供预打包脚本（TODO）。
 
-# 进阶内容
+### 必要配置
+在 `config/api.py` 中填写：
+- CORE_API_KEY / CORE_MODEL（核心实时多模态模型，如 Qwen-Omni-Realtime / GLM-Realtime / GPT-4o-Realtime）
+- AUDIO_API_KEY（可选：语音克隆 / TTS）
+- 其他：记忆、情绪模型、OpenRouter 兼容入口等
 
-## 修改人设
+---
+## 角色与人设管理
 
-- 网页版访问`http://localhost:48911/chara_manager`即可进入人设编辑页面。初始 ~~猫娘~~ 伙伴的预设名称为`小天`，建议直接修改名字，并一项一项添加或修改基础人设，但尽量控制数量。
+访问：`/chara_manager`（示例：`http://localhost:48911/chara_manager`）
 
-- 进阶人设主要包括**Live2D模型设置(live2d)**和**声音设置(voice_id)**。如果你想要更改**Live2D模型**，请先将模型目录复制到本项目中的`static`文件夹下。从进阶设置中可以进入Live2D模型管理界面，可以更换模型，并通过拖拽和鼠标滚轮调整模型的位置和大小。如果你想要更改**角色声音**，请准备一段15秒左右的连贯、干净的语音录音。通过进阶设置进入语音设置页面，上传录音即可完成自定义语音。
+- 初始角色默认名称可直接修改；尽量保持核心设定精炼，避免上下文膨胀导致延迟增加。
+- 进阶设置包含：
+  - Live2D 模型：将模型目录置于 `static/` 下；通过界面管理与拖拽定位。
+  - 自定义声音：准备 ~15 秒干净语音，进入语音设置页面上传即完成克隆。
+  - system_prompt：不建议随意重写；如需实验可在此完全替换系统指令。
 
-- 进阶人设中还有一个`system_prompt`，可以对系统指令进行完全自定义，但不建议修改。
+---
+## API / 模型切换
+访问：`/api_key` 切换核心实时模型与辅助（记忆 / 语音）服务商。当前支持 OpenAI Realtime 兼容协议的多家模型（Qwen / GLM / GPT-4o 等）。
 
-## 修改API提供商
+---
+## 记忆系统
+访问：`/memory_browser` 审阅：
+- 近期短期记忆（recent）
+- 语义聚合摘要（semantic）
+- 时间线索（timeindex）
 
-- 通过访问`http://localhost:48911/api_key`可以切换核心API和辅助API（记忆/语音）的服务提供商。Qwen功能全面，GLM完全免费。
+可用于校对幻觉、缓解复读、纠正角色认知。
 
-## 记忆审阅
+核心模块：`memory/recent.py` / `memory/semantic.py` / `memory/timeindex.py`。
 
-- 通过访问`http://localhost:48911/memory_browser`可以浏览和校对近期记忆与摘要，一定程度上缓解模型复读、认知错误等问题。
+---
+## 目录结构速览
+```
+main_server.py        # 主交互服务（Web / 实时会话）
+memory_server.py      # 记忆与状态服务
+main_helper/          # 会话管理 & 实时流处理
+memory/               # 记忆体系实现
+static/               # 前端静态资源 + Live2D 模型
+templates/            # Jinja2 模板页
+config/               # API & Prompt & 模型配置
+utils/                # 前端定位 / 音频工具 / 偏好
+```
 
-## 参与开发
+---
+## 设计要点
+| 目标 | 说明 |
+|------|------|
+| 低延迟 | 控制上下文体积 + 流式增量拼接 + 避免阻塞工具调用 |
+| 多端同步 | 利用会话管理器广播状态（见 `core.LLMSessionManager`） |
+| 内存分层 | 近期 -> 语义摘要 -> 时间索引，减少上下文冗余 |
+| 可替换性 | API 层抽象，支持不同 Realtime 服务商切换 |
 
-本项目环境依赖非常简单，请在`python3.12`环境中执行`pip install -r requirements.txt`即可。请注意将`config/api_template.py`复制为`config/api.py`.开发者建议加入企鹅群1048307485，猫娘名称见项目标题。
+---
+## TODO（节选）
+A. 高优先级
+1. 工具调用 / MCP 协议增强（异步非阻塞执行）
+2. Live2D 表情 / 动作精细控制
 
-# TODO List（开发计划）
+B. 中优先级
+1. vanilla 网络（多实例互通）
+2. 移动端链路优化（直连实时模型 + 远程记忆）
+3. Memory Server MCP 化（跨生态复用）
+4. 外部软件接入（QQ / cursor 等作为工具层）
 
-## A. 高优先级
+---
+## 常见问答（Q&A 摘要）
+> 为什么默认推荐某些模型？
+实时多模态链路 + 首 token 延迟是优先指标。
 
-1. 兼容工具调用或MCP（本质是工具调用，不强求兼容MCP）。
+> 感觉模型“变笨”？
+项目只负责调度与上下文组织；智能水平取决于所选模型。可在 `config/api.py` 替换更高级模型（如 GPT-4o 系列）。
 
-1. 支持L2D表情控制和动作控制。
+> Live2D 口型不同步？
+已兼容两种主流口型同步形式；多数问题来自模型资源自身。
 
-## B. 中等优先级
+> 是否支持工具 / MCP？
+协议层已预留；受制于当前国内部分实时接口暂不全量开放，后续跟进。
 
-1. 猫娘网络。允许猫娘之间自行通信。需要一定的用户量基础，因此优先级下调。
+> 支持哪些 Realtime 模型？
+Qwen-Omni-Realtime / GLM-Realtime / GPT-4o-Realtime（以及未来兼容的同类 OpenAI Realtime 协议实现）。
 
-1. 针对手机端的优化。将会话管理器后端迁移至JS，直接与API服务器端通信；只将记忆服务器保存在PC端，则可以降低手机端延迟。但是，这与本项目的"多端同步"的主目标不一致，因此优先级下调。
+---
+## 贡献
+欢迎 PR / Issue。建议：
+1. 描述问题 / 改动动机
+2. 提供最小复现上下文
+3. 避免引入重量依赖
 
-1. 将Memory Server改造成MCP服务器，以MCP的形式让同一个猫娘兼容不同语言模型、聊天框架。（工作量不是很大）
+---
+## 致谢
+感谢早期内测 / 反馈的所有贡献者与提供素材的朋友们。项目在持续演进，期待你的参与。
 
-1. 接入QQ/cursor等外部软件。由于语音模型是实时特化的，cursor类软件只能以工具形式被Lanlan调用；QQ类软件只能将Memory Server嵌入到其他框架。
+---
+## 许可
+本项目以 MIT 协议开源，详见 `LICENSE`。
 
-# Q&A
-
-> *你为什么要用阿里？为什么不用Deepseek？*
-
-因为阿里是全模态模型，它说话快。
-
-> *你为什么要用8B模型？你不知道8B模型都是笨比吗？*
-
-因为阿里目前只有8B模型，它说话快。
-
-> *能不能换别的厂家/离线运行/换别的模型/xxx试试？*
-
-对不起，但是它说话快。
-
-> *为什么我的AI感觉笨笨的？*
-
-本项目无法对AI的**智能水平**负责，只能帮助您选择当前综合性能最优的解决方案。如果您已经看过本项目在Bilibili的视频，那么直播版与开源版代码逻辑一致，只有支持的API接口不一致。有条件者可以将`config/api.py`中的`CORE_URL`/`CORE_API_KEY`/`CORE_MODEL`替换成OpenAI的`GPT-4o`版本，即可将模型从Qwen升级为`GPT-4o`。也可以**等待阿里或其他国内厂家的升级与跟进**。
-
-**技术的进步不在一朝一夕，请耐心守候AI的成长**！
-
-> *Live2D模型的嘴巴怎么张不开？*
-
-本项目已经兼容了L2D模型的全部两种口型同步方式。口型同步出现问题，大概率是Live2D模型本身不支持，而不是本项目的问题。
-
-> *是否支持MCP服务、工具、插件？*
-
-OpenAI官方的Realtime API支持`tool calling`功能，因此，本项目与MCP服务兼容，且直播版已经实装了联网搜索等工具。但是，与常规文本模型不同的是，实时模型使用工具需要考虑异步协同和阻塞问题。此外，目前阿里平台并不支持工具调用。因此，开源项目暂时没有MCP兼容性的计划，留待国内厂商实现相关接口后再跟进。
-
-> *本项目支持哪些语言模型？*
-
-本项目依赖于实时全模态API。直播版本使用的是Gemini Live API，开源版本使用的是[OpenAI Realtime API](https://platform.openai.com/docs/guides/realtime)。Gemini Live接口具有更好的效果，但目前**只支持谷歌**。OpenAI Realtime接口规范目前**有OpenAI，阿里云，智谱 三家服务商**支持，未来可能兼容更多模型。开源版支持`Qwen-Omni-Realtime`,`GLM-Realtime`和`GPT-4o-Realtime`三个模型。
-
-**已知其他支持实时模式但不兼容OpenAI Realtime的模型：**(字节跳动)豆包实时语音交互，(商汤)SenseNova V6 Omni，(科大讯飞)星火认知超拟人
-
-> *为什么xxx项目的语音对话延迟比你还低？*
-
-影响对话延迟的因素有：
-- ***上下文长度***：主要因素。冗长的人设文本和记忆池，会导致对话延迟的显著上升。
-- ***模型大小***：主要因素。越大的模型越智能，需要在智能与延迟之间权衡。本项目使用的模型中，`Qwen-Omni`是目前`8B`级别模型中最强的，`GPT-4o`则有`30B`级别的激活参数。小于8B的模型可能取得更低的响应延迟，但也会相应地变笨。注意，影响延迟的只有MoE中的激活参数量。
-- ***缓存命中率***：当输入的前缀不变时，能够有效命中语言模型的KV缓存，从而显著降低延迟。因此，尽量使用增量式插入，而不要频繁修改先前（尤其是开头）的对话。
-- *网络延迟*：通常在200ms以内，并不是影响*延迟*的主要因素。但如果存在网络波动，可能会导致语音*卡顿*。
-
-如果你确实有发现相同上下文长度、相同智能水平下，延迟更低的解决方案，请提交issue，感谢分享。
-
-> *你这项目的标题到底是个什么玩意儿？*
-
-Chat酱是本人2023年3月制作的基于Chatgpt的QQ聊天猫娘。兰兰是2024年3月制作的基于GPT4v和Discord的语音+视觉多模态AI猫娘。小八是本人于2025年4月制作的全场景AI猫娘。标题承载了本人三年间的心路历程。现在姑且还是叫Project Lanlan吧？
-
-> *为什么要设计xxx/xxx/xxx？*
-
-建议进群私聊。很多目前看来冗余的设计，在直播版本（前瞻版本）中都有更多用处。
-
-# 特别鸣谢
-
-特别感谢*明天好像没什么*、*喵*和*小韭菜饺*协助测试。特别感谢*大毛怪灬嘎*提供的logo素材。
+---
+如果你读到这里，说明你可能已经准备好让 vanilla 陪你继续探索接下来的可能性。祝使用愉快。

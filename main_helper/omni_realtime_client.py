@@ -67,7 +67,8 @@ class OmniRealtimeClient:
         on_output_transcript: Optional[Callable[[str, bool], Awaitable[None]]] = None,
         on_connection_error: Optional[Callable[[], Awaitable[None]]] = None,
         on_response_done: Optional[Callable[[], Awaitable[None]]] = None,
-        extra_event_handlers: Optional[Dict[str, Callable[[Dict[str, Any]], Awaitable[None]]]] = None
+        extra_event_handlers: Optional[Dict[str, Callable[[Dict[str, Any]], Awaitable[None]]]] = None,
+        disable_proxy: bool = False  # 新增：是否禁用代理
     ):
         self.base_url = base_url
         self.api_key = api_key
@@ -83,6 +84,8 @@ class OmniRealtimeClient:
         self.handle_connection_error = on_connection_error
         self.on_response_done = on_response_done
         self.extra_event_handlers = extra_event_handlers or {}
+        self.disable_proxy = disable_proxy
+        self._saved_proxy_env: Dict[str, str] = {}
 
         # Track current response state
         self._current_response_id = None
@@ -96,9 +99,31 @@ class OmniRealtimeClient:
         self._modalities = ["text", "audio"]
         self._audio_in_buffer = False
         self._skip_until_next_response = False
+        # 新增：音频缓冲提交控制
+        self._pending_audio_bytes = 0
+        self._last_commit_time = time.time()
+        self._commit_bytes_threshold = 3200  # ~100ms @16kHz mono 16bit
+        self._commit_time_threshold = 0.25   # 250ms 最长等待
 
     async def connect(self, instructions: str, native_audio=True) -> None:
         """Establish WebSocket connection with the Realtime API."""
+        import os, urllib.parse
+        # 如果需要禁用代理，则暂存并移除相关环境变量
+        if self.disable_proxy:
+            for key in ["http_proxy", "https_proxy", "all_proxy", "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY"]:
+                if key in os.environ:
+                    self._saved_proxy_env[key] = os.environ.pop(key)
+            # 追加 NO_PROXY 白名单，避免被系统自动代理
+            parsed = urllib.parse.urlparse(self.base_url)
+            host = parsed.hostname or ''
+            if host:
+                no_proxy_keys = ["NO_PROXY", "no_proxy"]
+                for k in no_proxy_keys:
+                    if k in os.environ:
+                        if host not in os.environ[k].split(','):
+                            os.environ[k] += f",{host}"
+                    else:
+                        os.environ[k] = host
         url = f"{self.base_url}?model={self.model}"
         headers = {
             "Authorization": f"Bearer {self.api_key}"
@@ -168,15 +193,28 @@ class OmniRealtimeClient:
         await self.send_event(event)
 
     async def stream_audio(self, audio_chunk: bytes) -> None:
-        """Stream raw audio data to the API."""
-        # only support 16bit 16kHz mono pcm
+        """Stream raw audio data to the API (pcm16 16k mono) 并按阈值自动commit."""
+        if not audio_chunk:
+            return
         audio_b64 = base64.b64encode(audio_chunk).decode()
-
-        append_event = {
-            "type": "input_audio_buffer.append",
-            "audio": audio_b64
-        }
+        append_event = {"type": "input_audio_buffer.append", "audio": audio_b64}
         await self.send_event(append_event)
+        # 累计长度
+        self._pending_audio_bytes += len(audio_chunk)
+        now = time.time()
+        if (self._pending_audio_bytes >= self._commit_bytes_threshold) or (now - self._last_commit_time >= self._commit_time_threshold):
+            await self.send_event({"type": "input_audio_buffer.commit"})
+            logger.debug(f"Committed audio buffer: bytes={self._pending_audio_bytes}")
+            self._pending_audio_bytes = 0
+            self._last_commit_time = now
+
+    async def flush_audio(self):
+        """手动刷新未提交的音频缓冲。可在结束讲话/会话切换前调用。"""
+        if self._pending_audio_bytes > 0:
+            await self.send_event({"type": "input_audio_buffer.commit"})
+            logger.debug(f"Flushed audio buffer: bytes={self._pending_audio_bytes}")
+            self._pending_audio_bytes = 0
+            self._last_commit_time = time.time()
 
     async def stream_image(self, image_b64: str) -> None:
         """Stream raw image data to the API."""
@@ -339,3 +377,9 @@ class OmniRealtimeClient:
                 logger.error(f"OmniRealtimeClient: Error closing WebSocket connection: {e}")
             finally:
                 self.ws = None
+                # 连接关闭后恢复代理环境变量
+                if self.disable_proxy and self._saved_proxy_env:
+                    import os
+                    for k, v in self._saved_proxy_env.items():
+                        os.environ[k] = v
+                    self._saved_proxy_env.clear()

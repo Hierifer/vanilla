@@ -23,3 +23,5 @@ SETTING_VERIFIER_MODEL = "qwen-max"#'openai/o4-mini'
 SEMANTIC_MODEL = 'text-embedding-v4'#'text-embedding-3-small'
 RERANKER_MODEL = 'qwen-plus'#'openai/gpt-4.1'
 CORRECTION_MODEL = 'qwen-max'
+# 新增默认情绪分析模型，避免未生成 core_config.json 时 ImportError
+EMOTION_MODEL = 'qwen-turbo-2025-07-15'

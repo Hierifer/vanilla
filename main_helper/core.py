@@ -22,12 +22,22 @@ import inflect
 import base64
 from io import BytesIO
 from PIL import Image
-from config import get_character_data, CORE_URL, CORE_MODEL, EMOTION_MODEL, CORE_API_KEY, MEMORY_SERVER_PORT, AUDIO_API_KEY
+from config import get_character_data, CORE_URL, CORE_MODEL, CORE_API_KEY, MEMORY_SERVER_PORT, AUDIO_API_KEY
 from multiprocessing import Process, Queue as MPQueue
 from uuid import uuid4
 import numpy as np
 from librosa import resample
 import httpx 
+# 追加：禁止对本地地址使用系统代理
+import os as _os
+_no_proxy_val = 'localhost,127.0.0.1'
+if 'NO_PROXY' in _os.environ:
+    if _no_proxy_val not in _os.environ['NO_PROXY']:
+        _os.environ['NO_PROXY'] += ',' + _os.environ['NO_PROXY']
+else:
+    _os.environ['NO_PROXY'] = _no_proxy_val
+_os.environ['no_proxy'] = _os.environ['NO_PROXY']
+LOCAL_PROXIES = {"http": None, "https": None}
 
 # Setup logger for this module
 logger = logging.getLogger(__name__)
@@ -112,7 +122,8 @@ class LLMSessionManager:
             on_input_transcript=self.handle_input_transcript,
             on_output_transcript=self.handle_output_transcript,
             on_connection_error=self.handle_connection_error,
-            on_response_done=self.handle_response_complete
+            on_response_done=self.handle_response_complete,
+            disable_proxy=True  # 新增：禁用 WebSocket 代理
         )
 
     async def handle_interrupt(self):
@@ -333,7 +344,8 @@ class LLMSessionManager:
         try:
             # 获取初始 prompt
             initial_prompt = self.lanlan_prompt
-            initial_prompt += requests.get(f"http://localhost:{self.memory_server_port}/new_dialog/{self.lanlan_name}").text
+            print(f"http://localhost:{self.memory_server_port}/new_dialog/{self.lanlan_name}")
+            initial_prompt += requests.get(f"http://0.0.0.0:{self.memory_server_port}/new_dialog/{self.lanlan_name}", timeout=5, proxies=LOCAL_PROXIES).text
             # logger.info("====Initial Prompt=====")
             # logger.info(initial_prompt)
 
@@ -396,13 +408,14 @@ class LLMSessionManager:
                 on_input_transcript=self.handle_input_transcript,
                 on_output_transcript=self.handle_output_transcript,
                 on_connection_error=self.handle_connection_error,
-                on_response_done=self.handle_response_complete
+                on_response_done=self.handle_response_complete,
+                disable_proxy=True  # 新增：禁用 WebSocket 代理
             )
             
             initial_prompt = self.lanlan_prompt
             self.initial_cache_snapshot_len = len(self.message_cache_for_new_session)
-            async with httpx.AsyncClient() as client:
-                resp = await client.get(f"http://localhost:{self.memory_server_port}/new_dialog/{self.lanlan_name}")
+            async with httpx.AsyncClient(trust_env=False) as client:
+                resp = await client.get(f"http://localhost:{self.memory_server_port}/new_dialog/{self.lanlan_name}", timeout=5)
                 initial_prompt += resp.text + self._convert_cache_to_str(self.message_cache_for_new_session)
             # print(initial_prompt)
             await self.pending_session.connect(initial_prompt, native_audio = not self.use_tts)
@@ -483,6 +496,10 @@ class LLMSessionManager:
             if old_main_session:
                 logger.info("Final Swap Sequence: Closing old session...")
                 try:
+                    try:
+                        await old_main_session.flush_audio()
+                    except Exception:
+                        pass
                     await old_main_session.close()
                     logger.info("Final Swap Sequence: Old session closed successfully.")
                 except Exception as e:
@@ -647,6 +664,10 @@ class LLMSessionManager:
         if self.session:
             try:
                 logger.info("End Session: Closing connection...")
+                try:
+                    await self.session.flush_audio()
+                except Exception:
+                    pass
                 await self.session.close()
                 logger.info("End Session: Qwen connection closed.")
             except Exception as e:
@@ -693,46 +714,47 @@ class LLMSessionManager:
                     if self.current_expression:
                         await self.websocket.send_json({
                             "type": "expression",
-                            "message": '-',
+                            "message": '-'
                         })
                     await self.websocket.send_json({
                         "type": "expression",
-                        "message": expression_map[prompt] + '+',
+                        "message": expression_map[prompt] + '+'
                     })
                     self.current_expression = expression_map[prompt]
                 else:
                     if self.current_expression:
                         await self.websocket.send_json({
                             "type": "expression",
-                            "message": '-',
+                            "message": '-'
                         })
 
                 if prompt in expression_map:
-                    self.sync_message_queue.put({"type": "json",
-                                                 "data": {
-                        "type": "expression",
-                        "message": expression_map[prompt] + '+',
-                    }})
+                    self.sync_message_queue.put({
+                        "type": "json",
+                        "data": {
+                            "type": "expression",
+                            "message": expression_map[prompt] + '+'
+                        }
+                    })
                 else:
                     if self.current_expression:
-                        self.sync_message_queue.put({"type": "json",
-                         "data": {
-                             "type": "expression",
-                             "message": '-',
-                         }})
+                        self.sync_message_queue.put({
+                            "type": "json",
+                            "data": {
+                                "type": "expression",
+                                "message": '-'
+                            }
+                        })
                         self.current_expression = None
-
         except WebSocketDisconnect:
             pass
         except Exception as e:
             logger.error(f"💥 WS Send Response Error: {e}")
 
-
     async def send_speech(self, tts_audio):
         try:
             if self.websocket and hasattr(self.websocket, 'client_state') and self.websocket.client_state == self.websocket.client_state.CONNECTED:
                 await self.websocket.send_bytes(tts_audio)
-
                 # 同步到同步服务器
                 self.sync_message_queue.put({"type": "binary", "data": tts_audio})
         except WebSocketDisconnect:
@@ -755,7 +777,7 @@ def speech_synthesis_worker(request_queue, response_queue, audio_api_key, voice_
     import numpy as np
     from librosa import resample
     import re
-    import time
+    import time  # 确保定义 time
     dashscope.api_key = audio_api_key
     class Callback(ResultCallback):
         def __init__(self, response_queue):
@@ -778,22 +800,19 @@ def speech_synthesis_worker(request_queue, response_queue, audio_api_key, voice_
                 data = (resample(data, orig_sr=24000, target_sr=48000)*32768.).clip(-32768, 32767).astype(np.int16).tobytes()
                 self.response_queue.put(data)
                 self.cache = self.cache[8000:]
-            
-            
     callback = Callback(response_queue)
     current_speech_id = None
     synthesizer = None
     while True:
-        # 非阻塞检查队列，优先处理打断
+        # 非阻塞检查队列，优先处理打断完毕
         if request_queue.empty():
             time.sleep(0.01)
             continue
-
         sid, tts_text = request_queue.get()
         if sid is None and synthesizer is not None:
             # 合成完毕
             try:
-                current_speech_id = None
+                current_speech_id = sid
                 synthesizer.streaming_complete()
             except Exception:
                 synthesizer = None
@@ -802,11 +821,8 @@ def speech_synthesis_worker(request_queue, response_queue, audio_api_key, voice_
             current_speech_id = sid
             try:
                 if synthesizer is not None:
-                    try:
-                        synthesizer.streaming_complete()
-                        synthesizer.close()
-                    except Exception:
-                        pass
+                    synthesizer.streaming_complete()
+                    synthesizer.close()
                 synthesizer = SpeechSynthesizer(
                     model="cosyvoice-v2",
                     voice=voice_id,
@@ -814,6 +830,7 @@ def speech_synthesis_worker(request_queue, response_queue, audio_api_key, voice_
                     format=AudioFormat.PCM_24000HZ_MONO_16BIT,
                     callback=callback,
                 )
+                time.sleep(0.01)
             except Exception as e:
                 print("TTS Error: ", e)
                 synthesizer = None
@@ -822,12 +839,11 @@ def speech_synthesis_worker(request_queue, response_queue, audio_api_key, voice_
         if not tts_text:
             time.sleep(0.01)
             continue
-        # 处理表情等逻辑
         try:
             synthesizer.streaming_call(tts_text)
         except Exception as e:
-            print("TTS Error: ", e)
             synthesizer = None
             current_speech_id = None
-            continue
-
+            print("TTS Error: ", e)
+        except:
+            pass
