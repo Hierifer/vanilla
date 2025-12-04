@@ -1,3 +1,6 @@
 fastapi
 uvicorn
 lark-oapi
+langgraph
+langchain-openai
+python-dotenv
