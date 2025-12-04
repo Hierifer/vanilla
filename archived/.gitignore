@@ -1,0 +1,30 @@
+# 忽略敏感配置
+core_config.txt
+
+# 忽略日志文件
+*.log
+
+# 忽略 memory/store 下所有内容（含子目录和文件）
+memory/store/
+config/api.py
+config/*.json
+
+# 忽略临时文件
+*.tmp
+
+# 忽略 Python 缓存文件和字节码
+__pycache__/
+*.py[cod]
+
+# 忽略 Jupyter Notebook 检查点
+.ipynb_checkpoints/
+.vscode/
+.idea/
+.pytest_cache/
+.DS_Store
+.venv/
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
