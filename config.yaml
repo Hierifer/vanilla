@@ -1,0 +1,10 @@
+cronjob:
+  rss_fetch:
+    schedule: "*/5 * * * *"  # 每5分钟执行一次
+    task: "agent.rss.get_rss_updates"
+    enabled: true
+prod:
+  debug: false
+  database_url: "postgresql://user:password@localhost/prod_db"
+  log_level: "INFO"
+  
