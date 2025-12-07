@@ -3,4 +3,8 @@ uvicorn
 lark-oapi
 langgraph
 langchain-openai
+langchain-core
 python-dotenv
+feedparser
+apscheduler
+typing-extensions

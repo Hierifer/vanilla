@@ -1,5 +1,5 @@
 # 使用官方 Python 3.12 轻量级镜像
-FROM python:3.12-slim
+FROM crpi-goo4z49jdymjsvdp.cn-hangzhou.personal.cr.aliyuncs.com/nh_vanilla/python:3.12-slim 
 
 # 设置工作目录
 WORKDIR /app

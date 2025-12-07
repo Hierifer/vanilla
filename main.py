@@ -172,7 +172,7 @@ def check_rss_and_push_sync():
         return
 
     subs = get_subscribed_chats()
-    print(subs)
+
     if not subs:
         print("No subscribers.")
         return
@@ -222,6 +222,16 @@ def handle_message(data: lark.im.v1.P2ImMessageReceiveV1):
     # 获取 event_id
     event_id = data.header.event_id
     pid = os.getpid()
+
+    # 检查消息时间，忽略 1 分钟前的消息
+    try:
+        create_time = int(data.event.message.create_time)
+        current_time = int(time.time() * 1000)
+        if current_time - create_time > 60 * 1000:
+            print(f"[PID:{pid}] Message too old ({(current_time - create_time)/1000:.2f}s). Skipping.")
+            return
+    except Exception as e:
+        print(f"[PID:{pid}] Warning: Could not check message age: {e}")
 
     print(f"[PID:{pid}] Received event_id: {event_id}")
     

@@ -5,65 +5,107 @@ from datetime import datetime
 import time
 from email.utils import parsedate_to_datetime
 
-RSS_URL = "https://www.unrealengine.com/en-US/rss"
+RSS_URLS = [
+    "https://www.unrealengine.com/en-US/rss",
+    "https://blog.unity.com/feed",
+    "https://www.gamedev.net/articles/feed",
+    "https://gamefromscratch.com/feed",
+    "https://www.gamedeveloper.com/feed",
+    "https://gdconf.com/feed",
+    "https://www.ign.com/rss",
+]
+
+
 STATE_FILE = "rss_state.json"
 
 def get_rss_updates():
     """
     获取 RSS 更新，返回新文章列表。
     """
-    feed = feedparser.parse(RSS_URL)
+    all_new_entries = []
+    state = load_state()
+    state_updated = False
 
-    print(feed)
-    
-    if not os.path.exists(STATE_FILE):
-        last_published = 0
-        # 如果是第一次运行，只保存最新的一条作为标记，避免一次性推送太多
-        # 或者可以设置为 0，推送所有（如果 feed 条目不多）
-        # 这里为了安全起见，初始化为当前 feed 的第一条时间（如果有）
-        if feed.entries:
-             # 尝试解析时间，RSS 时间格式可能不同
-            latest_entry = feed.entries[0]
-            published_parsed = latest_entry.get("published_parsed") or latest_entry.get("updated_parsed")
-            if published_parsed:
-                last_published = time.mktime(published_parsed)
+    for url in RSS_URLS:
+        try:
+            print(f"Checking feed: {url}")
+            feed = feedparser.parse(url)
+            if not feed.entries:
+                continue
             
-            save_state(last_published)
-            return [] # 首次运行不推送，或者根据需求修改
-    else:
+            # 获取该 URL 的上次更新时间，默认为 0
+            last_published = state.get(url, 0)
+            max_published = last_published
+            url_new_entries = []
+
+            # 如果是该 URL 首次运行
+            if last_published == 0:
+                if feed.entries:
+                    latest_entry = feed.entries[0]
+                    published_parsed = latest_entry.get("published_parsed") or latest_entry.get("updated_parsed")
+                    if published_parsed:
+                        current_ts = time.mktime(published_parsed)
+                        state[url] = current_ts
+                        state_updated = True
+                        
+                        # 首次运行推送最新一条，以便确认
+                        source_title = feed.feed.title if 'title' in feed.feed else "RSS Feed"
+                        all_new_entries.append({
+                            "title": f"[{source_title}] {latest_entry.title}",
+                            "link": latest_entry.link,
+                            "summary": latest_entry.summary if 'summary' in latest_entry else "",
+                            "published": latest_entry.published if 'published' in latest_entry else ""
+                        })
+                continue
+
+            # 遍历条目
+            for entry in feed.entries:
+                published_parsed = entry.get("published_parsed") or entry.get("updated_parsed")
+                if not published_parsed:
+                    continue
+                
+                published_ts = time.mktime(published_parsed)
+                
+                if published_ts > last_published:
+                    source_title = feed.feed.title if 'title' in feed.feed else "RSS Feed"
+                    url_new_entries.append({
+                        "title": f"[{source_title}] {entry.title}",
+                        "link": entry.link,
+                        "summary": entry.summary if 'summary' in entry else "",
+                        "published": entry.published if 'published' in entry else ""
+                    })
+                    if published_ts > max_published:
+                        max_published = published_ts
+            
+            if max_published > last_published:
+                state[url] = max_published
+                state_updated = True
+                all_new_entries.extend(url_new_entries)
+
+        except Exception as e:
+            print(f"Error fetching {url}: {e}")
+
+    if state_updated:
+        save_state(state)
+
+    return all_new_entries
+
+def load_state():
+    if not os.path.exists(STATE_FILE):
+        return {}
+    try:
         with open(STATE_FILE, "r") as f:
             data = json.load(f)
-            last_published = data.get("last_published", 0)
+            # 兼容旧格式：如果包含 "last_published"，说明是旧文件，重置为空字典
+            if "last_published" in data:
+                return {}
+            return data
+    except:
+        return {}
 
-    new_entries = []
-    max_published = last_published
-
-    # 遍历条目（通常 RSS 是按时间倒序的，但为了保险起见，我们检查所有）
-    for entry in feed.entries:
-        published_parsed = entry.get("published_parsed") or entry.get("updated_parsed")
-        if not published_parsed:
-            continue
-        
-        published_ts = time.mktime(published_parsed)
-        
-        if published_ts > last_published:
-            new_entries.append({
-                "title": entry.title,
-                "link": entry.link,
-                "summary": entry.summary if 'summary' in entry else "",
-                "published": entry.published if 'published' in entry else ""
-            })
-            if published_ts > max_published:
-                max_published = published_ts
-
-    if max_published > last_published:
-        save_state(max_published)
-
-    return new_entries
-
-def save_state(last_published):
+def save_state(state):
     with open(STATE_FILE, "w") as f:
-        json.dump({"last_published": last_published}, f)
+        json.dump(state, f)
 
 if __name__ == "__main__":
     # Test
