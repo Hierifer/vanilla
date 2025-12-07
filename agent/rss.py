@@ -6,13 +6,12 @@ import time
 from email.utils import parsedate_to_datetime
 
 RSS_URLS = [
-    "https://www.unrealengine.com/en-US/rss",
+    "https://www.unrealengine.com/zh-CN/rss",
     "https://blog.unity.com/feed",
     "https://www.gamedev.net/articles/feed",
-    "https://gamefromscratch.com/feed",
-    "https://www.gamedeveloper.com/feed",
+    "https://gamedev.net/blogs/feed/",
     "https://gdconf.com/feed",
-    "https://www.ign.com/rss",
+    "https://corp.ign.com/feeds",
 ]
 
 
