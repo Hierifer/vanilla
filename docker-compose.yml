@@ -4,6 +4,7 @@ services:
   vanilla-app:
     image: crpi-goo4z49jdymjsvdp.cn-hangzhou.personal.cr.aliyuncs.com/nh_vanilla/python:3.12-slim-amd64
     build: .
+    image: crpi-goo4z49jdymjsvdp.cn-hangzhou.personal.cr.aliyuncs.com/nh_vanilla/python:3.12-slim
     container_name: vanilla-app
     restart: always
     env_file:
