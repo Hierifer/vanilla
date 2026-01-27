@@ -61,7 +61,7 @@ def add_subscription(chat_id):
         return True
     return False
 
-async def check_rss_and_push():
+def check_rss_and_push():
     print("Checking RSS updates...")
     try:
         updates = get_rss_updates()
@@ -81,7 +81,7 @@ async def check_rss_and_push():
 
     
     for entry in updates:
-        message_text = f"【Unreal Engine News】\n{entry['title']}\n{entry['link']}"
+        message_text = f"【GameDev News】\n{entry['title']}\n{entry['link']}"
         for chat_id in subs:
             print(f"Pushing to {chat_id}: {entry['title']}")
             request = CreateMessageRequest.builder() \
@@ -98,6 +98,19 @@ async def check_rss_and_push():
             if not resp.success():
                 print(f"Failed to push to {chat_id}: {resp.code}, {resp.msg}")
 
+async def check_rss_and_push_async():
+    """
+    Async wrapper for check_rss_and_push with timeout.
+    """
+    print("Starting scheduled RSS check (Async)...")
+    try:
+        # 设置 300 秒 (5分钟) 的整体超时时间
+        await asyncio.wait_for(asyncio.to_thread(check_rss_and_push), timeout=300)
+    except asyncio.TimeoutError:
+        print("Scheduled RSS check timed out after 300s!")
+    except Exception as e:
+        print(f"Error in scheduled RSS check: {e}")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     pid = os.getpid()
@@ -105,7 +118,7 @@ async def lifespan(app: FastAPI):
     
     scheduler = AsyncIOScheduler()
     # 每半小时执行一次 RSS 检查
-    scheduler.add_job(check_rss_and_push, 'cron', minute='*/30')
+    scheduler.add_job(check_rss_and_push_async, 'cron', minute='*/30', max_instances=3)
     # 每一分钟执行一次 Cache Sync
     scheduler.add_job(event_id_cache.sync, 'cron', minute='*')
     

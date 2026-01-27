@@ -4,6 +4,7 @@ import os
 from datetime import datetime
 import time
 from email.utils import parsedate_to_datetime
+import urllib.request
 
 RSS_URLS = [
     "https://www.unrealengine.com/zh-CN/rss",
@@ -28,7 +29,11 @@ def get_rss_updates():
     for url in RSS_URLS:
         try:
             print(f"Checking feed: {url}")
-            feed = feedparser.parse(url)
+            # Use urllib to fetch with timeout to prevent hanging
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=30) as response:
+                feed = feedparser.parse(response)
+            
             if not feed.entries:
                 continue
             

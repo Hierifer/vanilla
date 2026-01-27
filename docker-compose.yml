@@ -2,7 +2,6 @@ version: '3.8'
 
 services:
   vanilla-app:
-    image: crpi-goo4z49jdymjsvdp.cn-hangzhou.personal.cr.aliyuncs.com/nh_vanilla/python:3.12-slim-amd64
     build: .
     image: crpi-goo4z49jdymjsvdp.cn-hangzhou.personal.cr.aliyuncs.com/nh_vanilla/python:3.12-slim
     container_name: vanilla-app
@@ -16,7 +15,7 @@ services:
       - "8000:8000"
 
   nginx:
-    image: crpi-goo4z49jdymjsvdp.cn-hangzhou.personal.cr.aliyuncs.com/nh_vanilla/nginx:latest-amd64
+    image: crpi-goo4z49jdymjsvdp.cn-hangzhou.personal.cr.aliyuncs.com/nh_vanilla/nginx:latest
     container_name: vanilla-nginx
     restart: always
     ports:
