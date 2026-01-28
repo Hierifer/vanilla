@@ -8,3 +8,5 @@ python-dotenv
 feedparser
 apscheduler
 typing-extensions
+requests
+beautifulsoup4

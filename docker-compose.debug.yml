@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  vanilla-app:
+    build: .
+    # 覆盖默认命令，使容器保持运行状态，以便进入容器调试
+    command: tail -f /dev/null
+    container_name: vanilla-app-debug
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
