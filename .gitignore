@@ -1,2 +1,6 @@
 .env
 .env.example
+rss_state.json
+cache/
+logs/
+storage/

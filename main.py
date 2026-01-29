@@ -25,7 +25,7 @@ from src.utils.lrucache import LRUCache
 # 初始化 LRU Cache，容量为 1000
 event_id_cache = LRUCache(1000)
 
-SUBSCRIPTIONS_FILE = "subscriptions.json"
+SUBSCRIPTIONS_FILE = "./storage/subscriptions.json"
 CHAT_LOG_FILE = "logs/chat_history.jsonl"
 _chat_log_lock = threading.Lock()
 
@@ -127,7 +127,7 @@ def check_rss_and_push():
     for entry in updates:
         print(f"Generating summary for: {entry['title']}")
         summary = fetch_and_summarize(entry['link'])
-        message_text = f"【GameDev News】\n{entry['title']}\n{entry['link']}\n\n【AI 摘要】\n{summary}"
+        message_text = f"【GameDev News】\n{entry['title']}\n{entry['link']}\n\n【女仆摘要】\n{summary}"
         for chat_id in subs:
             print(f"Pushing to {chat_id}: {entry['title']}")
             resp = lark_client_instance.send_text_message(chat_id, message_text)
