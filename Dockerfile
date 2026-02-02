@@ -22,4 +22,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD python -c "import urllib.request; print(urllib.request.urlopen('http://localhost:8000/health').getcode())" || exit 1
 
 # 启动命令
-CMD ["python", "main.py"]
+CMD ["python", "app/main.py"]

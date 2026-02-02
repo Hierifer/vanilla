@@ -4,3 +4,8 @@ rss_state.json
 cache/
 logs/
 storage/
+web/node_modules
+web/.nuxt
+web/.output
+web/.nitro
+web/dist

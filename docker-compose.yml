@@ -14,6 +14,14 @@ services:
     ports:
       - "8000:8000"
 
+  vanilla-web:
+    build:
+      context: ./web
+    container_name: vanilla-web
+    restart: always
+    ports:
+      - "3000:3000"
+
   nginx:
     image: crpi-goo4z49jdymjsvdp.cn-hangzhou.personal.cr.aliyuncs.com/nh_vanilla/nginx:latest
     container_name: vanilla-nginx
@@ -26,3 +34,4 @@ services:
       - ./nginx/certs:/etc/nginx/certs
     depends_on:
       - vanilla-app
+      - vanilla-web
